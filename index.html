@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airport Flight Scheduler</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f6f9fc;
+            margin: 0;
+            padding: 2rem 14vw;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #7851f9;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            width: 100%;
+        }
+        .section {
+            background: white;
+            border: 1px solid #00000014;
+            border-radius: 8px;
+            margin: 10px 0;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box; /* Ensures padding is included in width */
+        }
+        input:focus {
+            border-color: #7851f9;
+            outline: none;
+        }
+        button {
+            background-color: #5e30f3;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 20%; /* Makes button full width */
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #5a28d3;
+        }
+        #flightList, #bookedList {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #fafafa;
+            padding: 10px;
+            box-sizing: border-box; /* Ensures padding is included in width */
+        }
+        .flight-item, .booked-item {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #ffffff;
+        }
+        .flight-status {
+            font-weight: bold;
+        }
+        .status-ready { color: green; }
+        .status-on-the-way { color: orange; }
+        .status-cancelled { color: red; }
+        .status-booked { color: blue; }
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .alert.show {
+            display: block;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .bookings-section {
+            display: none; /* Initially hidden */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem 2vw;
+            }
+            .section {
+                padding: 15px;
+            }
+            button {
+                padding: 8px;
+                font-size: 14px;
+            }
+            input, select {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Airport Flight Scheduler</h1>
+<div class="container">
+    <div class="section" id="flightSection">
+        <h2>Available Flights</h2>
+        <div id="flightList"></div>
+    </div>
+    <div class="section" id="bookingSection">
+        <h2>Book a Flight</h2>
+        <div class="form-group">
+            <label for="flightNumber">Flight Number:</label>
+            <input type="text" id="flightNumber" required>
+        </div>
+        <div class="form-group">
+            <label for="passengerName">Passenger Name:</label>
+            <input type="text" id="passengerName" required>
+        </div>
+        <div class="form-group">
+            <label for="passengerEmail">Passenger Email:</label>
+            <input type="email" id="passengerEmail" required>
+        </div>
+        <button onclick="bookFlight()">Book Flight</button>
+        <div id="bookingAlert" class="alert"></div>
+    </div>
+    <div class="bookings-section" id="bookingsSection">
+        <h2>Your Bookings</h2>
+        <div id="bookedList"></div>
+        <div class="form-group">
+            <label for="cancelFlightNumber">Cancel Flight Number:</label>
+            <input type="text" id="cancelFlightNumber" required>
+        </div>
+        <button onclick="cancelBooking()">Cancel Booking</button>
+        <div id="cancelAlert" class="alert"></div>
+    </div>
+</div>
+
+<script>
+    const flights = [
+        { flightNumber: 'AA101', origin: 'New York', destination: 'London', time: '10:00 AM', status: 'Ready' },
+        { flightNumber: 'BA202', origin: 'London', destination: 'New York', time: '02:00 PM', status: 'On the Way' },
+        { flightNumber: 'CA303', origin: 'Los Angeles', destination: 'Tokyo', time: '11:30 AM', status: 'Cancelled' },
+        { flightNumber: 'DA404', origin: 'Paris', destination: 'Berlin', time: '01:15 PM', status: 'Ready' },
+    ];
+
+    const bookings = [];
+
+    function displayFlights() {
+        const flightListDiv = document.getElementById('flightList');
+        flightListDiv.innerHTML = '';
+        flights.forEach(flight => {
+            flightListDiv.innerHTML += `
+                <div class="flight-item">
+                    <div>
+                        <strong>${flight.flightNumber}</strong><br>
+                        ${flight.origin} to ${flight.destination}<br>
+                        ${flight.time}<br>
+                        <span class="flight-status status-${flight.status.toLowerCase().replace(" ", "-")}">${flight.status}</span>
+                    </div>
+                    <button onclick="checkAvailability('${flight.flightNumber}')">Check Availability</button>
+                </div>
+            `;
+        });
+    }
+
+    function checkAvailability(flightNumber) {
+        const flight = flights.find(f => f.flightNumber === flightNumber);
+        if (flight) {
+            showAlert(`Flight ${flight.flightNumber} is currently ${flight.status}.`, 'bookingAlert', flight.status === 'Ready' ? 'success' : 'error');
+        } else {
+            showAlert('Flight not found.', 'bookingAlert', 'error');
+        }
+    }
+
+    function bookFlight() {
+        const flightNumber = document.getElementById('flightNumber').value;
+        const passengerName = document.getElementById('passengerName').value;
+        const passengerEmail = document.getElementById('passengerEmail').value;
+
+        const flight = flights.find(f => f.flightNumber === flightNumber);
+        if (flight && flight.status === 'Ready') {
+            const booking = { flightNumber, passengerName, passengerEmail };
+            bookings.push(booking);
+            flight.status = 'Booked'; // Update flight status
+            showAlert(`Flight ${flightNumber} booked successfully for ${passengerName}!`, 'bookingAlert', 'success');
+            displayFlights(); // Refresh flight list
+            displayBookings(); // Refresh bookings
+            clearBookingInputs();
+        } else {
+            showAlert(`Flight ${flightNumber} is not available for booking.`, 'bookingAlert', 'error');
+        }
+    }
+
+    function cancelBooking() {
+        const flightNumber = document.getElementById('cancelFlightNumber').value;
+        const bookingIndex = bookings.findIndex(b => b.flightNumber === flightNumber);
+
+        if (bookingIndex !== -1) {
+            const booking = bookings[bookingIndex];
+            const flight = flights.find(f => f.flightNumber === booking.flightNumber);
+            flight.status = 'Ready'; // Reset flight status
+            bookings.splice(bookingIndex, 1); // Remove booking
+            showAlert(`Booking for flight ${flightNumber} cancelled successfully.`, 'cancelAlert', 'success');
+            displayFlights(); // Refresh flight list
+            displayBookings(); // Refresh bookings
+            clearCancelInputs();
+        } else {
+            showAlert('No booking found for the provided flight number.', 'cancelAlert', 'error');
+        }
+    }
+
+    function displayBookings() {
+        const bookedListDiv = document.getElementById('bookedList');
+        bookedListDiv.innerHTML = '';
+        bookings.forEach(booking => {
+            bookedListDiv.innerHTML += `
+                <div class="booked-item">
+                    <div>
+                        <strong>${booking.flightNumber}</strong><br>
+                        Passenger: ${booking.passengerName}<br>
+                        Email: ${booking.passengerEmail}
+                    </div>
+                </div>
+            `;
+        });
+        if (bookings.length === 0) {
+            bookedListDiv.innerHTML = '<p>No bookings found.</p>';
+            document.getElementById('bookingsSection').style.display = 'none'; // Hide section if no bookings
+        } else {
+            document.getElementById('bookingsSection').style.display = 'block'; // Show section if there are bookings
+        }
+    }
+
+    function showAlert(message, elementId, type) {
+        const alertDiv = document.getElementById(elementId);
+        alertDiv.textContent = message;
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.classList.add('show');
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+        }, 6000); // Alert display duration set to 3 seconds
+    }
+
+    function clearBookingInputs() {
+        document.getElementById('flightNumber').value = '';
+        document.getElementById('passengerName').value = '';
+        document.getElementById('passengerEmail').value = '';
+    }
+
+    function clearCancelInputs() {
+        document.getElementById('cancelFlightNumber').value = '';
+    }
+
+    displayFlights(); // Initial display of flights
+</script>
+
+</body>
+</html>
